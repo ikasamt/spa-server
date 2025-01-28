@@ -36,7 +36,7 @@
 
 3. Build the server:
    ```bash
-   env GOOS=linux GOARCH=amd64 go build -o bin/spa-server
+   GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o bin/spa-server
    ```
 
 ---

@@ -77,6 +77,10 @@
    ```bash
    docker build -t spa-server .
    ```
+2. Push
+   ```bash
+   docker push ikasamt/spa-server
+   ```
 
 ### Run the Container
 

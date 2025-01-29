@@ -11,6 +11,17 @@ import (
 	"github.com/joho/godotenv"
 )
 
+func getClientIP(r *http.Request) string {
+	// X-Forwarded-For ヘッダーをチェック
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		ips := strings.Split(xff, ",")
+		// 最初のIPアドレスを取得（クライアントに最も近いIP）
+		return strings.TrimSpace(ips[0])
+	}
+	// フォールバックとしてRemoteAddrを使用
+	return strings.Split(r.RemoteAddr, ":")[0]
+}
+
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
@@ -47,7 +58,12 @@ func main() {
 	// リクエストハンドラ
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		// クライアントIPアドレスを取得
-		clientIP := strings.Split(r.RemoteAddr, ":")[0]
+		clientIP := getClientIP(r)
+
+		// ログ出力
+		log.Printf("Client IP: %s", clientIP)
+		log.Printf("X-Forwarded-For: %s", r.Header.Get("X-Forwarded-For"))
+		log.Printf("RemoteAddr: %s", r.RemoteAddr)
 
 		// 許可されたIPの確認
 		if len(allowedIPs) > 0 && allowedIPs[0] != "" { // 設定がある場合

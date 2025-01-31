@@ -19,6 +19,7 @@ func getClientIP(r *http.Request) string {
 		return strings.TrimSpace(ips[0])
 	}
 	// フォールバックとしてRemoteAddrを使用
+	log.Println(r.RemoteAddr)
 	return strings.Split(r.RemoteAddr, ":")[0]
 }
 
@@ -45,6 +46,7 @@ func main() {
 
 	allowRemoteIPs := os.Getenv("ALLOW_REMOTE_IPS")
 	allowedIPs := strings.Split(allowRemoteIPs, ",")
+	log.Println(allowRemoteIPs)
 
 	// 指定されたディレクトリが存在するか確認
 	if _, err := os.Stat(distDir); os.IsNotExist(err) {
@@ -60,11 +62,6 @@ func main() {
 		// クライアントIPアドレスを取得
 		clientIP := getClientIP(r)
 
-		// ログ出力
-		log.Printf("Client IP: %s", clientIP)
-		log.Printf("X-Forwarded-For: %s", r.Header.Get("X-Forwarded-For"))
-		log.Printf("RemoteAddr: %s", r.RemoteAddr)
-
 		// 許可されたIPの確認
 		if len(allowedIPs) > 0 && allowedIPs[0] != "" { // 設定がある場合
 			allowed := false
@@ -75,6 +72,10 @@ func main() {
 				}
 			}
 			if !allowed {
+				// ログ出力
+				log.Println("Client IP: ", clientIP)
+				log.Println("X-Forwarded-For: ", r.Header.Get("X-Forwarded-For"))
+				log.Println("RemoteAddr: ", r.RemoteAddr)
 				http.Error(w, "Forbidden", http.StatusForbidden)
 				return
 			}
@@ -93,6 +94,6 @@ func main() {
 	})
 
 	// サーバー起動
-	fmt.Printf("Serving on http://localhost:%s\n", port)
+	log.Println("Serving on http://localhost:", port)
 	http.ListenAndServe(":"+port, nil)
 }

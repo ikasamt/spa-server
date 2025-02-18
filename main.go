@@ -86,9 +86,13 @@ func main() {
 
 		// ファイルが存在しない場合は index.html を返す
 		if _, err := os.Stat(filePath); os.IsNotExist(err) {
+			w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate") // index.html にはキャッシュさせない
 			http.ServeFile(w, r, filepath.Join(distDir, "index.html"))
 		} else {
 			// 静的ファイルを提供
+			if r.URL.Path == "/" || r.URL.Path == "/index.html" {
+				w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate") // index.html にはキャッシュさせない
+			}
 			fileServer.ServeHTTP(w, r)
 		}
 	})

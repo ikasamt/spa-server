@@ -65,8 +65,9 @@ func main() {
 		// 許可されたIPの確認
 		if len(allowedIPs) > 0 && allowedIPs[0] != "" { // 設定がある場合
 			allowed := false
-			for _, ip := range allowedIPs {
-				if ip == clientIP {
+			for _, allowedIP := range allowedIPs {
+				// 完全一致または前方一致をチェック
+				if allowedIP == clientIP || strings.HasPrefix(clientIP, strings.TrimSpace(allowedIP)) {
 					allowed = true
 					break
 				}

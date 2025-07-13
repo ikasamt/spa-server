@@ -10,6 +10,7 @@
 - **SPA Routing**: Routes all undefined paths to `index.html` for SPA compatibility.
 - **Environment Configuration**: Configure port, static file directory, and IP restrictions via `.env`.
 - **Docker Ready**: Easily build and deploy using Docker.
+- **Proxy Support**: Proxy `/query` path requests to a backend server.
 
 ---
 
@@ -52,6 +53,8 @@
    PORT=8080
    DIST_DIR=./dist
    ALLOW_REMOTE_IPS=127.0.0.1,192.168.1.1
+   PROXY_URL=http://backend-server:3000
+   PROXY_PATHS=/api,/query
    ```
 
 3. Start the server:
@@ -66,6 +69,29 @@
 - `PORT`: The port to host the server. Defaults to `8080`.
 - `DIST_DIR`: Path to the directory containing static files. Required.
 - `ALLOW_REMOTE_IPS`: Comma-separated list of allowed IPs. Leave empty to allow all IPs.
+- `PROXY_URL`: Backend server URL for proxying requests. Optional.
+- `PROXY_PATHS`: Comma-separated list of paths to proxy. Defaults to `/query` if not specified.
+
+### Proxy Feature
+
+When `PROXY_URL` is configured, requests to specified paths will be proxied to the backend server. This is useful for API integration while serving the frontend from the same domain.
+
+#### Default behavior:
+- If `PROXY_PATHS` is not set, only `/query` paths are proxied
+
+#### Custom paths:
+Set `PROXY_PATHS` to specify multiple paths:
+```env
+PROXY_URL=http://backend-server:3000
+PROXY_PATHS=/api,/graphql,/webhooks
+```
+
+Examples:
+- Request to `http://localhost:8080/api/users` → Proxied to `http://backend-server:3000/api/users`
+- Request to `http://localhost:8080/graphql` → Proxied to `http://backend-server:3000/graphql`
+- Request to `http://localhost:8080/static/app.js` → Served from local files (not proxied)
+
+Headers and HTTP methods are preserved during proxying.
 
 ---
 

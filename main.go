@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -48,6 +50,27 @@ func main() {
 	allowedIPs := strings.Split(allowRemoteIPs, ",")
 	log.Println(allowRemoteIPs)
 
+	// プロキシURL設定を取得
+	proxyURL := os.Getenv("PROXY_URL")
+	if proxyURL != "" {
+		log.Printf("Proxy URL configured: %s\n", proxyURL)
+	}
+
+	// プロキシパスの設定を取得
+	proxyPaths := os.Getenv("PROXY_PATHS")
+	var paths []string
+	if proxyPaths != "" {
+		paths = strings.Split(proxyPaths, ",")
+		for i := range paths {
+			paths[i] = strings.TrimSpace(paths[i])
+		}
+		log.Printf("Proxy paths configured: %v\n", paths)
+	} else {
+		// デフォルトは/query
+		paths = []string{"/query"}
+		log.Printf("Using default proxy path: /query\n")
+	}
+
 	// 指定されたディレクトリが存在するか確認
 	if _, err := os.Stat(distDir); os.IsNotExist(err) {
 		fmt.Printf("Error: Directory %s does not exist.\n", distDir)
@@ -56,6 +79,22 @@ func main() {
 
 	// ファイルサーバーを作成
 	fileServer := http.FileServer(http.Dir(distDir))
+
+	// プロキシの設定
+	var proxy *httputil.ReverseProxy
+	if proxyURL != "" {
+		target, err := url.Parse(proxyURL)
+		if err != nil {
+			log.Printf("Error parsing proxy URL: %v\n", err)
+		} else {
+			proxy = httputil.NewSingleHostReverseProxy(target)
+			// エラーハンドラーを設定
+			proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
+				log.Printf("Proxy error: %v\n", err)
+				http.Error(w, "Bad Gateway", http.StatusBadGateway)
+			}
+		}
+	}
 
 	// リクエストハンドラ
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -80,6 +119,22 @@ func main() {
 				http.Error(w, "Forbidden", http.StatusForbidden)
 				return
 			}
+		}
+
+		// プロキシパスのチェック
+		shouldProxy := false
+		for _, path := range paths {
+			if strings.HasPrefix(r.URL.Path, path) {
+				shouldProxy = true
+				break
+			}
+		}
+
+		// プロキシ処理
+		if shouldProxy && proxy != nil {
+			log.Printf("Proxying request: %s %s\n", r.Method, r.URL.Path)
+			proxy.ServeHTTP(w, r)
+			return
 		}
 
 		// ファイルパスを確認

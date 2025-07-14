@@ -48,10 +48,25 @@ func createHandler(distDir string) http.Handler {
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		// プロキシパスのチェック
 		shouldProxy := false
-		for _, path := range paths {
-			if strings.HasPrefix(r.URL.Path, path) {
-				shouldProxy = true
-				break
+		for _, pattern := range paths {
+			// ワイルドカードパターンのチェック
+			if strings.Contains(pattern, "*") {
+				// パターンをプレフィックスとサフィックスに分割
+				parts := strings.SplitN(pattern, "*", 2)
+				if len(parts) == 2 {
+					prefix := parts[0]
+					suffix := parts[1]
+					if strings.HasPrefix(r.URL.Path, prefix) && strings.HasSuffix(r.URL.Path, suffix) {
+						shouldProxy = true
+						break
+					}
+				}
+			} else {
+				// 通常のプレフィックスマッチ
+				if strings.HasPrefix(r.URL.Path, pattern) {
+					shouldProxy = true
+					break
+				}
 			}
 		}
 
@@ -293,6 +308,34 @@ func TestMultipleProxyPaths(t *testing.T) {
 			requestPath:    "/api",
 			expectedStatus: http.StatusOK,
 			expectProxy:    false,
+		},
+		{
+			name:           "ワイルドカードパターンで.mp4ファイルはプロキシされる",
+			proxyPaths:     "/api,/videos/*.mp4",
+			requestPath:    "/videos/test.mp4",
+			expectedStatus: http.StatusOK,
+			expectProxy:    true,
+		},
+		{
+			name:           "ワイルドカードパターンで.mp4以外はプロキシされない",
+			proxyPaths:     "/api,/videos/*.mp4",
+			requestPath:    "/videos/",
+			expectedStatus: http.StatusOK,
+			expectProxy:    false,
+		},
+		{
+			name:           "ワイルドカードパターンでクエリパラメータ付きはプロキシされない",
+			proxyPaths:     "/api,/videos/*.mp4",
+			requestPath:    "/videos/?keyword=test",
+			expectedStatus: http.StatusOK,
+			expectProxy:    false,
+		},
+		{
+			name:           "複数のワイルドカードパターン",
+			proxyPaths:     "/images/*.jpg,/videos/*.mp4",
+			requestPath:    "/images/test.jpg",
+			expectedStatus: http.StatusOK,
+			expectProxy:    true,
 		},
 	}
 

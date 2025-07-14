@@ -123,10 +123,25 @@ func main() {
 
 		// プロキシパスのチェック
 		shouldProxy := false
-		for _, path := range paths {
-			if strings.HasPrefix(r.URL.Path, path) {
-				shouldProxy = true
-				break
+		for _, pattern := range paths {
+			// ワイルドカードパターンのチェック
+			if strings.Contains(pattern, "*") {
+				// パターンをプレフィックスとサフィックスに分割
+				parts := strings.SplitN(pattern, "*", 2)
+				if len(parts) == 2 {
+					prefix := parts[0]
+					suffix := parts[1]
+					if strings.HasPrefix(r.URL.Path, prefix) && strings.HasSuffix(r.URL.Path, suffix) {
+						shouldProxy = true
+						break
+					}
+				}
+			} else {
+				// 通常のプレフィックスマッチ
+				if strings.HasPrefix(r.URL.Path, pattern) {
+					shouldProxy = true
+					break
+				}
 			}
 		}
 
